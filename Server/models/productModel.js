@@ -4,37 +4,55 @@ const productSchema = mongoose.Schema(
   {
     productName: {
       type: String,
-      require: true,
+      required: true,
     },
 
-    productImage: {
+    productImage: [{
       type: String,
-      default: "",
+      default:
+        "https://coffective.com/wp-content/uploads/2018/06/default-featured-image.png.jpg",
+    }],
+
+    Product_Quantity: {
+      type: Number,
+      required: true,
+    },
+
+    unit: {
+      type: String,
+      required: true,
     },
 
     price: {
-      type: String,
-      require: true,
+      type: Number,
+      required: true,
     },
 
     thumbnail: {
       type: String,
+      default:
+        "https://coffective.com/wp-content/uploads/2018/06/default-featured-image.png.jpg",
     },
 
     productDescription: {
       type: String,
     },
 
-    cateogory: {
-      type: mongoose.Types.ObjectId,
-      ref: "Cateogory",
-      require: true,
+    category: {
+      type: String,
     },
 
-    review: {
+    admin_data:{
       type: mongoose.Types.ObjectId,
-      ref: "Review",
+      ref: "admin"
     },
+
+    seller_data:{
+      type: mongoose.Types.ObjectId,
+      ref: "salesusers"
+    },
+
+    review: [{ type: mongoose.Types.ObjectId, ref: "review" }]
   },
 
   {
@@ -42,4 +60,6 @@ const productSchema = mongoose.Schema(
   }
 );
 
-export const Product = mongoose.model("products", productSchema);
+
+
+export const PRODUCT = mongoose.model("products", productSchema);

@@ -9,6 +9,12 @@ const salesModel=mongoose.Schema({
     company_name: {
         type: String,
         required: true,
+        unique:true
+      },
+
+    mobile: {
+        type: Number,
+        required: true,
       },
 
     GST_no: {
@@ -16,7 +22,7 @@ const salesModel=mongoose.Schema({
         required: true,
       },
     
-      mail: {
+      Email: {
         type: String,
         required: true,
         unique: true,
@@ -33,11 +39,15 @@ const salesModel=mongoose.Schema({
         default:"https://www.vecteezy.com/vector-art/20765399-default-profile-account-unknown-icon-black-silhouette"
       },
 
+      Active:{
+        type:Boolean,
+        default:true
+      }
       
 },
 {
     timestamps: true,
 })
 
-export const Sales=mongoose.model("salesusers",salesModel)
+export const SELLER=mongoose.model("salesusers",salesModel)
 

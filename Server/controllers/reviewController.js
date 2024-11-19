@@ -1,68 +1,23 @@
-import mongoose from "mongoose";
 import { REVIEW } from "../models/reviewModel.js";
-import { User } from "../models/userModel.js";
-import jwt from "jsonwebtoken";
+import { PRODUCT } from "../models/productModel.js";
 
 export const createReview = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    const { productId } = req.params;
+    const { rating, comment,user_data } = req.body;
+    const userId = req.user.id;
 
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized user" });
-    }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    const user = await User.findById(decoded.id).select("-password");
+    // Create the review
+    const review = await REVIEW.create({ userId, productId, rating, comment,user_data:userId });
 
-    const { rating, comment } = req.body;
-
-    if (!comment || !rating) {
-      return res.json({ message: "feedback and rating required" });
-    }
-
-    const addReview = new REVIEW({
-      user: user,
-      rating: rating,
-      comment: comment,
+    // Link the review to the product
+    await PRODUCT.findByIdAndUpdate(productId, {
+      $push: { review: review._id },
     });
 
-    await addReview.save();
-
-    res.json({ message: "review created successfully" });
-  } catch (error) {
     res
-      .status(error.statusCode || 500)
-      .json({ message: error.message || "internal server error" });
-  }
-};
-
-export const editReview = async (req, res, next) => {
-  try {
-    const token = req.cookies.token;
-
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized user" });
-    }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-
-    const reviewId = req.params.id;
-    const { comment, rating } = req.body;
-
-    const review = await REVIEW.find(
-      { user: mongoose.Types.ObjectId(decoded.id) },
-      { _id: mongoose.Types.ObjectId(reviewId) }
-    );
-    if (!review) {
-      return res
-        .status(404)
-        .json({ message: "Review not found or unauthorized access" });
-    }
-
-    await updateOne(
-      { _id: review._id },
-      { $set: { comment: comment, rating: rating } }
-    );
-
-    res.json({ message: "review updated" });
+      .status(201)
+      .json({ message: "reivew created successfully", data: review });
   } catch (error) {
     res
       .status(error.statusCode || 500)
@@ -72,38 +27,39 @@ export const editReview = async (req, res, next) => {
 
 export const allReview = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    const { userId } = req.user.id;
 
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized user" });
+    const reviews = await REVIEW.find(userId).populate("user_data","User_name profilePic")
+
+    if (!reviews.length) {
+      return res
+        .status(404)
+        .json({ message: "No reviews found for this product" });
     }
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
-    const allData = await REVIEW.find({
-      user: new mongoose.Types.ObjectId(decoded.id),
-    });
-
-    res.json({ message: "all review fetched", data: allData });
-  } catch (error) {
     res
-      .status(error.statusCode || 500)
-      .json({ message: error.message || "internal server error" });
+      .status(200)
+      .json({ message: "reivew fetched successfully", data: reviews });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
   }
 };
 
 export const deleteReview = async (req, res, next) => {
   try {
-    const reviewId = req.params.id;
+    const { reviewId } = req.params;
+    const userId = req.user.id;
 
-    if (!reviewId) {
-      return res.json({ message: "review not found" });
+    const review = await REVIEW.findOneAndDelete({ _id: reviewId, userId });
+
+    if (!review) {
+      return res
+        .status(404)
+        .json({ message: "Review not found or not authorized" });
     }
 
-    await REVIEW.deleteOne({ _id: new mongoose.Types.ObjectId(reviewId) });
-    res.json({ message: "review deleted" });
+    res.status(200).json({ message: "Review deleted successfully" });
   } catch (error) {
-    res
-      .status(error.statusCode || 500)
-      .json({ message: error.message || "internal server error" });
+    res.status(500).json({ message: "Internal server error", error });
   }
 };

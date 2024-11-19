@@ -1,14 +1,16 @@
 import express from "express";
 import { userAuth } from "../middleware/userAuth.js";
-import { allReview, createReview, deleteReview, editReview } from "../controllers/reviewController.js";
+import { allReview, createReview, deleteReview} from "../controllers/reviewController.js";
 
 const router=express.Router();
 
-router.post("/create_review",userAuth,createReview)
-router.put("/edit_review/:id",userAuth,editReview)
+// router.put("/edit_review/:id",userAuth,editReview)
+
+router.post("/create_review/:productId",userAuth,createReview)
 
 router.get("/allreview",userAuth,allReview)
-router.delete("/delete_review/:id",userAuth,deleteReview)
+
+router.delete("/delete_review/:productId",userAuth,deleteReview)
 
 
 

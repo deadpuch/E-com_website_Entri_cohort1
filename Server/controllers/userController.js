@@ -2,16 +2,22 @@ import { User } from "../models/userModel.js";
 import bcrypt from "bcrypt";
 import { generateToken } from "../utils/token.js";
 import mongoose from "mongoose";
+import { cloudnaryInstance } from "../config/cloudinary.js";
 
 export const userSignup = async (req, res, next) => {
   try {
-    const { name, mail, password, profilePic } = req.body;
+    const { User_name, Email, password, profilePic } = req.body;
 
-    if (!name || !mail || !password) {
+    if (!User_name || !Email || !password) {
       return res.status(400).json({ message: "all field required" });
     }
 
-    const userExist = await User.findOne({ mail });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(Email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+
+    const userExist = await User.findOne({ Email });
 
     if (userExist) {
       return res.status(400).json({ message: "user already exist" });
@@ -20,8 +26,8 @@ export const userSignup = async (req, res, next) => {
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     const newUser = new User({
-      name,
-      mail,
+      User_name,
+      Email,
       password: hashedPassword,
       profilePic,
     });
@@ -32,6 +38,8 @@ export const userSignup = async (req, res, next) => {
 
     res.json({ message: "user created successfully" });
   } catch (error) {
+    console.log(error);
+
     res
       .status(error.statusCode || 500)
       .json({ message: error.message || "internal server error" });
@@ -40,12 +48,12 @@ export const userSignup = async (req, res, next) => {
 
 export const userLogin = async (req, res, next) => {
   try {
-    const { mail, password } = req.body;
+    const { Email, password } = req.body;
 
-    if (!mail || !password) {
+    if (!Email || !password) {
       return res.status(400).json({ message: "all field required" });
     }
-    const checkUser = await User.findOne({ mail });
+    const checkUser = await User.findOne({ Email });
 
     if (!checkUser) {
       return res.status(404).json({ message: "user not found" });
@@ -57,6 +65,11 @@ export const userLogin = async (req, res, next) => {
       return res.status(400).json({ message: "user not authenticated" });
     }
 
+    const activeUser = await User.findOne({ Email,Active: true });
+
+    if (!activeUser) {
+      return res.status(403).json({ message: "your account has been banded" });
+    }
     const token = generateToken(checkUser, "user");
     res.cookie("token", token);
 
@@ -117,13 +130,15 @@ export const userLogout = async (req, res, next) => {
 
 export const userProfileUpdate = async (req, res, next) => {
   try {
-    const { name, mail, profilePic } = req.body;
+    const { User_name, Email, password, profilePic } = req.body;
 
     const userId = req.user.id;
+    const profile = req.file;
 
+    const propic = (await cloudnaryInstance.uploader.upload(profile.path)).url;
     await User.updateOne(
       { _id: new mongoose.Types.ObjectId(userId) },
-      { $set: { name: name, mail: mail, profilePic: profilePic } }
+      { $set: { User_name: User_name, Email: Email, profilePic: propic } }
     );
 
     res.json({ message: "profile updated success" });

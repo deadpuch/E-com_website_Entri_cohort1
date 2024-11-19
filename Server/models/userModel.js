@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
 
 const userSchema = mongoose.Schema({
-  name: {
+  User_name: {
     type: String,
     required: true,
   },
 
-  mail: {
+  Email: {
     type: String,
-    required: true,
     unique: true,
+    required: true,
   },
 
   password:{
@@ -22,6 +22,11 @@ const userSchema = mongoose.Schema({
     type:String,
     default:"https://www.vecteezy.com/vector-art/20765399-default-profile-account-unknown-icon-black-silhouette"
   },
+
+  Active:{
+    type:Boolean,
+    default:true
+  }
 
 
 },

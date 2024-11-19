@@ -1,17 +1,19 @@
-import { Admin } from "../models/adminModel.js";
+import { ADMIN } from "../models/adminModel.js";
 import bcrypt from "bcrypt";
 import { generateToken } from "../utils/token.js";
-import mongoose from "mongoose";
+import { cloudnaryInstance } from "../config/cloudinary.js";
+import { User } from "../models/userModel.js";
+import { SELLER } from "../models/salesModel.js";
 
 export const adminSignup = async (req, res, next) => {
   try {
-    const { name, mail, password, profilePic } = req.body;
+    const { name, Email, password, profilePic } = req.body;
 
-    if (!name || !mail || !password) {
+    if (!name || !Email || !password) {
       return res.status(400).json({ message: "all field required" });
     }
 
-    const adminExist = await Admin.findOne({ mail });
+    const adminExist = await ADMIN.findOne({ Email });
 
     if (adminExist) {
       return res.status(400).json({ message: "admin already exist" });
@@ -19,9 +21,9 @@ export const adminSignup = async (req, res, next) => {
 
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    const newadmin = new Admin({
+    const newadmin = new ADMIN({
       name,
-      mail,
+      Email,
       password: hashedPassword,
       profilePic,
     });
@@ -40,12 +42,12 @@ export const adminSignup = async (req, res, next) => {
 
 export const adminLogin = async (req, res, next) => {
   try {
-    const { mail, password } = req.body;
+    const { Email, password } = req.body;
 
-    if (!mail || !password) {
+    if (!Email || !password) {
       return res.status(400).json({ message: "all field required" });
     }
-    const checkadmin = await Admin.findOne({ mail });
+    const checkadmin = await ADMIN.findOne({ Email });
 
     if (!checkadmin) {
       return res.status(404).json({ message: "admin not found" });
@@ -70,8 +72,8 @@ export const adminLogin = async (req, res, next) => {
 
 export const adminResetPassword = async (req, res, next) => {
   try {
-    const { mail, updatedPassword } = req.body;
-    const findadmin = await Admin.findOne({ mail });
+    const { Email, updatedPassword } = req.body;
+    const findadmin = ADMIN.findOne({ Email });
 
     if (!findadmin) {
       return res.json({ message: "admin not authenticated" });
@@ -79,7 +81,10 @@ export const adminResetPassword = async (req, res, next) => {
 
     const passwordHash = bcrypt.hashSync(updatedPassword, 10);
 
-    await Admin.updateOne({ mail: mail }, { $set: { password: passwordHash } });
+    await ADMIN.updateOne(
+      { Email: Email },
+      { $set: { password: passwordHash } }
+    );
 
     res.json({ message: "password changed succefully" });
   } catch (error) {
@@ -93,9 +98,29 @@ export const adminProfile = async (req, res, next) => {
   try {
     const adminId = req.admin.id;
 
-    const adminProfile = await Admin.findById(adminId).select("-password");
+    const adminProfile = await ADMIN.findById(adminId).select("-password");
 
     res.json({ message: "profile fetch successfully", data: adminProfile });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "internal server error" });
+  }
+};
+
+export const adminProfileUpdate = async (req, res, next) => {
+  try {
+    const { name, Email, profilePic } = req.body;
+    const adminId = req.admin.id;
+    const profile = req.file;
+
+    const propic = (await cloudnaryInstance.uploader.upload(profile.path)).url;
+    await ADMIN.updateOne(
+      { _id: adminId },
+      { $set: { name: name, Email: Email, profilePic: propic } }
+    );
+
+    res.json({ message: "profile updated success" });
   } catch (error) {
     res
       .status(error.statusCode || 500)
@@ -115,18 +140,9 @@ export const adminLogout = async (req, res, next) => {
   }
 };
 
-export const adminProfileUpdate = async (req, res, next) => {
+export const checkAdmin = async (req, res, next) => {
   try {
-    const { name, mail, profilePic } = req.body;
-
-    const adminId = req.admin.id;
-
-    await Admin.updateOne(
-      { _id: new mongoose.Types.ObjectId(adminId) },
-      { $set: { name: name, mail: mail, profilePic: profilePic } }
-    );
-
-    res.json({ message: "profile updated success" });
+    res.json({ message: "admin verified" });
   } catch (error) {
     res
       .status(error.statusCode || 500)
@@ -137,7 +153,7 @@ export const adminProfileUpdate = async (req, res, next) => {
 export const adminDeleteAccount = async (req, res, next) => {
   try {
     const adminId = req.admin.id;
-    await Admin.deleteOne({ _id: new mongoose.Types.ObjectId(adminId) });
+    await ADMIN.deleteOne({ _id: adminId });
 
     res.json({ message: "account deleted" });
   } catch (error) {
@@ -147,9 +163,67 @@ export const adminDeleteAccount = async (req, res, next) => {
   }
 };
 
-export const checkAdmin = async (req, res, next) => {
+export const getAlluser = async (req, res, next) => {
   try {
-    res.json({ message: "admin verified" });
+    const allUser = await User.find();
+
+    res.json({ message: "all user data fetched", data: allUser });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "internal server error" });
+  }
+};
+
+export const Terminateuser = async (req, res, next) => {
+  try {
+    const { Active } = req.body;
+    const { userId } = req.params;
+
+    const userActive = await User.findOneAndUpdate(
+      { _id: userId }, // Find the user by ID
+      { $set: { Active: Active } }, // Update the 'active' field
+      { new: true } // Return the updated document
+    );
+    if (!userActive) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ message: "User terminated successfully" });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "internal server error" });
+  }
+};
+
+export const getAllSellers = async (req, res, next) => {
+  try {
+    const allUser = await SELLER.find();
+
+    res.json({ message: "all user data fetched", data: allUser });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "internal server error" });
+  }
+};
+
+export const TerminateSeller = async (req, res, next) => {
+  try {
+    const { Active } = req.body;
+    const { sellerId } = req.params;
+
+    const userActive = await SELLER.findOneAndUpdate(
+      { _id: sellerId }, // Find the user by ID
+      { $set: { Active: Active } }, // Update the 'active' field
+      { new: true } // Return the updated document
+    );
+    if (!userActive) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({ message: "User terminated successfully" });
   } catch (error) {
     res
       .status(error.statusCode || 500)

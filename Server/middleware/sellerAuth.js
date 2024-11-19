@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-export const saleAuth = (req, res, next) => {
+export const sellerAuth = (req, res, next) => {
   try {
     const token = req.cookies.token;
 
@@ -17,7 +17,7 @@ export const saleAuth = (req, res, next) => {
   }
 
     if (decodedToken.role!=="salesUser" && decodedToken.role!=="admin" ) {
-      return res.status(401).json({ message: "user not autherized ssss" });
+      return res.status(401).json({ message: "user not autherized" });
     }
 
     req.sales = decodedToken;

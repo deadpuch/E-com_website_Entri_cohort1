@@ -1,22 +1,33 @@
 import express from "express";
 import { adminAuth } from "../middleware/adminAuth.js";
-import { addProduct, deleteProduct, editProduct, getProduct } from "../controllers/productController.js";
-import { saleAuth } from "../middleware/salesAuth.js";
-import { sellerAddProduct } from "../controllers/sellerProduct.js";
+import {
+  addProduct,
+  deleteAllProduct,
+  deleteProduct,
+  editProduct,
+  getProduct,
+  getProductDetails,
+} from "../controllers/productController.js";
 
+import { upload } from "../middleware/multer.js";
+
+const fileUpload = upload.fields([
+  { name: "thumbnail", maxCount: 1 },
+  { name: "itemImage", maxCount: 5 },
+]);
 
 const router = express.Router();
 
-router.post("/addproduct", adminAuth, addProduct);
-router.put("/product-update/:id", adminAuth, editProduct);
+router.post("/addproduct", fileUpload,adminAuth,addProduct);
 
+router.get("/get-product", adminAuth, getProduct);
+router.get("/get-productDetails/:productId",adminAuth,getProductDetails);
 
-router.get("/productProfile", adminAuth, getProduct);
-router.delete("/product-delete/:id", adminAuth, deleteProduct);
+router.put("/product-update/:productId",fileUpload, adminAuth, editProduct);
 
+router.delete("/product-deleteAll", adminAuth, deleteAllProduct);
+router.delete("/product-delete/:productId", adminAuth, deleteProduct);
 
-
-router.post("/selleraddproduct", saleAuth, sellerAddProduct)
-
+// router.post("/selleraddproduct", saleAuth, sellerAddProduct);
 
 export { router as productRoutes };

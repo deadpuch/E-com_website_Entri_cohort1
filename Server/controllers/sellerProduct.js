@@ -1,49 +1,55 @@
 import mongoose from "mongoose";
-import jwt from "jsonwebtoken";
-import { SELLER_PRODUCTS } from "../models/sallerProduct.js";
-import { Sales } from "../models/salesModel.js";
+import { PRODUCT } from "../models/productModel.js";
+import { cloudnaryInstance } from "../config/cloudinary.js";
+
+import pLimit from "p-limit";
+const limit = pLimit(4);
 
 export const sellerAddProduct = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
-
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Verify the token and extract the sales user ID
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-
-    const salesUser = await Sales.findById(decoded.id);
-
-    if (!salesUser) {
-      return res.status(404).json({ message: "Sales user not found" });
-    }
-
     const {
       productName,
       productImage,
+      Product_Quantity,
+      unit,
       price,
       thumbnail,
       productDescription,
       cateogory,
       review,
-      sellerDetails,
+      seller_data,
     } = req.body;
 
-    if (!productName || !price) {
+    if (!productName || !price || !Product_Quantity || !unit) {
       return res.status(400).json({ message: "field required" });
     }
 
-    const newProduct = new SELLER_PRODUCTS({
+    const arrayImage = req.files.itemImage;
+    const thumbImg = req.files.thumbnail[0];
+
+    const itemImg = arrayImage.map((file) =>
+      limit(async () => {
+        const imageUrl = (await cloudnaryInstance.uploader.upload(file.path))
+          .url;
+        return imageUrl;
+      })
+    );
+    let itemImages = await Promise.all(itemImg);
+
+    const thumbImage = (await cloudnaryInstance.uploader.upload(thumbImg.path))
+      .url;
+
+    const newProduct = new PRODUCT({
       productName,
-      productImage,
+      productImage: itemImages,
+      Product_Quantity,
+      unit,
       price,
-      thumbnail,
+      thumbnail: thumbImage,
       productDescription,
       cateogory,
       review,
-      sellerDetails: salesUser._id,
+      seller_data: req.sales.id,
     });
 
     await newProduct.save();
@@ -56,38 +62,13 @@ export const sellerAddProduct = async (req, res, next) => {
   }
 };
 
-export const sellerEditProduct = async (req, res, next) => {
+export const sellerProducts = async (req, res, next) => {
   try {
-    const {
-      productName,
-      productImage,
-      price,
-      thumbnail,
-      productDescription,
-      cateogory,
-      review,
-    } = req.body;
+    const userId = req.sales.id;
 
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: "Invalid product ID" });
-    }
+    const fetchedItems = await PRODUCT.find({ seller_data: userId });
 
-    await SELLER_PRODUCTS.updateOne(
-      { _id: req.params.id },
-      {
-        $set: {
-          productName: productName,
-          productImage: productImage,
-          price: price,
-          thumbnail: thumbnail,
-          productDescription: productDescription,
-          cateogory: cateogory,
-          review: review,
-        },
-      }
-    );
-
-    res.json({ message: "product updated successfully" });
+    res.json({ message: "product fetch successfully", data: fetchedItems });
   } catch (error) {
     res
       .status(error.statusCode || 500)
@@ -95,50 +76,92 @@ export const sellerEditProduct = async (req, res, next) => {
   }
 };
 
-export const sellerProducts = async (req, res, next) => {
+export const individualProducts = async (req, res, next) => {
   try {
-    const token = req.cookies.token;
+    const userId = req.sales.id;
+    const { productId } = req.params;
 
-    if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Verify the token and extract the sales user ID
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-
-    const salesUser = await Sales.findById(decoded.id);
-
-    if (!salesUser) {
-      return res.status(404).json({ message: "Sales user not found" });
-    }
-
-    const fetchProduct = await SELLER_PRODUCTS.find({
-      sellerDetails: new mongoose.Types.ObjectId(salesUser),
-    }).select("");
-
-    if (!fetchProduct) {
-      return res.status(404).json({ message: "no products" });
-    }
-
-    res.json({ message: "product fetch successfully", data: fetchProduct });
+    const fetchedItems = await PRODUCT.findById(productId , {user_data:userId });
+    res.json({ message: "product fetch successfully", data: fetchedItems });
   } catch (error) {
     res
       .status(error.statusCode || 500)
       .json({ message: error.message || "internal server error" });
+  }
+};
+
+export const sellerEditProduct = async (req, res, next) => {
+  try {
+    const {
+      productName,
+      Product_Quantity,
+      unit,
+      price,
+      productDescription,
+      review,
+      category,
+    } = req.body;
+
+    const updateFields = {}; // Object to dynamically store fields to update
+
+    // Process product images if provided
+    if (req.files.itemImage && req.files.itemImage.length > 0) {
+      const arrayImage = req.files.itemImage;
+      const itemImg = arrayImage.map((file) =>
+        limit(async () => {
+          const imageUrl = (await cloudnaryInstance.uploader.upload(file.path))
+            .url;
+          return imageUrl;
+        })
+      );
+      updateFields.productImage = await Promise.all(itemImg);
+    }
+
+    // Process thumbnail image if provided
+    if (req.files.thumbnail && req.files.thumbnail.length > 0) {
+      const thumbImg = req.files.thumbnail[0];
+      updateFields.thumbnail = (
+        await cloudnaryInstance.uploader.upload(thumbImg.path)
+      ).url;
+    }
+
+    // Update other fields if provided in the body
+    if (productName) updateFields.productName = productName;
+    if (Product_Quantity) updateFields.Product_Quantity = Product_Quantity;
+    if (unit) updateFields.unit = unit;
+    if (price) updateFields.price = price;
+    if (productDescription)
+      updateFields.productDescription = productDescription;
+    if (category) updateFields.category = category;
+    if (review) updateFields.review = review;
+
+    const { productId } = req.params;
+
+    // Validate product ID
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    // Update the product with only the provided fields
+    await PRODUCT.updateOne({ _id: productId }, { $set: updateFields });
+
+    res.json({ message: "Product updated successfully" });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "Internal server error" });
   }
 };
 
 export const deleteProducts = async (req, res, next) => {
   try {
-    const productId = req.params.id;
+    const { productId } = req.params;
 
     if (!productId) {
       return res.json({ message: "product not found" });
     }
 
-    await SELLER_PRODUCTS.deleteOne({
-      _id: new mongoose.Types.ObjectId(productId),
-    });
+    await PRODUCT.deleteOne({ _id: productId });
 
     res.json({ message: "item deleted successfullty" });
   } catch (error) {
