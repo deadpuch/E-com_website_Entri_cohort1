@@ -50,7 +50,9 @@ export const deleteReview = async (req, res, next) => {
     const { reviewId } = req.params;
     const userId = req.user.id;
 
-    const review = await REVIEW.findOneAndDelete({ _id: reviewId, userId });
+    console.log(userId);
+    
+    const review = await REVIEW.findOneAndDelete({ _id: reviewId},{user_data:userId});
 
     if (!review) {
       return res

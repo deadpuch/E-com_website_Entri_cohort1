@@ -10,7 +10,7 @@ router.post("/create_review/:productId",userAuth,createReview)
 
 router.get("/allreview",userAuth,allReview)
 
-router.delete("/delete_review/:productId",userAuth,deleteReview)
+router.delete("/delete_review/:reviewId",userAuth,deleteReview)
 
 
 
