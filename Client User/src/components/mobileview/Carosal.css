@@ -1,0 +1,26 @@
+.swiper-pagination {
+    position: relative; /* Relative positioning to the container */
+    margin-top: 20px; /* Add spacing between slider and pagination */
+    display: flex;
+    justify-content: center; 
+   
+  }
+
+.swiper-pagination-bullet {
+  background-color: rgb(211, 226, 255);
+  color: rgb(0, 153, 255);
+}
+
+.swiper {
+  margin-top: 1.5rem;
+  padding-inline: 1rem;
+  overflow:hidden;
+  position: relative;
+}
+
+.swiper-slide {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}

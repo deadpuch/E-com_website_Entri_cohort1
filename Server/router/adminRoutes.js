@@ -3,6 +3,7 @@ import { adminDeleteAccount, adminLogin, adminLogout, adminProfile, adminProfile
 import { adminAuth } from "../middleware/adminAuth.js"
 import { productRoutes } from "./productRoutes.js"
 import { upload } from "../middleware/multer.js"
+import { advMobile } from "./adCarosal.js"
 const router=express.Router()
 
 router.post("/signup", adminSignup)
@@ -26,5 +27,7 @@ router.put('/terminateSellerAccount/:sellerId',adminAuth,TerminateSeller)
 router.get('/check-admin',adminAuth,checkAdmin)
 
 router.use('/product',productRoutes)
+
+router.use('/mobile_Carosal',advMobile)
 
 export {router as adminRoutes}

@@ -4,6 +4,7 @@ import { generateToken } from "../utils/token.js";
 import { cloudnaryInstance } from "../config/cloudinary.js";
 import { User } from "../models/userModel.js";
 import { SELLER } from "../models/salesModel.js";
+import { MOBILECAROSAL } from "../models/createAd.js";
 
 export const adminSignup = async (req, res, next) => {
   try {
@@ -224,6 +225,38 @@ export const TerminateSeller = async (req, res, next) => {
     }
 
     return res.status(200).json({ message: "User terminated successfully" });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "internal server error" });
+  }
+};
+
+export const addAdvImage = async (req, res, next) => {
+  try {
+    const { img } = req.body;
+
+    // if (!img) {
+    //   return res.json({ message: "Add Image" });
+    // }
+
+    console.log(req.files);
+
+    const arrayImage = req.files.advImages;
+    const itemImg = arrayImage.map((file) =>
+      limit(async () => {
+        const imageUrl = (await cloudnaryInstance.uploader.upload(file.path))
+          .url;
+        return imageUrl;
+      })
+    );
+
+    const newAdvImg = new MOBILECAROSAL({
+      img: imageUrl,
+    });
+
+    await newAdvImg.save();
+    res.json({ message: "image added successfully" });
   } catch (error) {
     res
       .status(error.statusCode || 500)
